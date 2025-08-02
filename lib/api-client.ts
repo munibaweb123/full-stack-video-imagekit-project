@@ -1,45 +1,53 @@
 import { IVideo } from "../models/Video";
 
-export type videoFormData = Omit<IVideo,"_id">
+export type videoFormData = Omit<IVideo, "_id">;
 
-type fetchOptions = {
-    method?: "GET" | "POST" | "PUT" | "DELETE";
-    body?: any;
-    headers?: Record<string, string>;
-}
+// Generic fetch options with a type-safe body
+type fetchOptions<T = unknown> = {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: T;
+  headers?: Record<string, string>;
+};
 
 class ApiClient {
-    private async fetch<T>(endpoint:string, options:fetchOptions={}): Promise<T> {
-        const { method = "GET", body, headers = {} } = options;
+  // Generic fetch method with response and request body types
+  private async fetch<TResponse, TBody = unknown>(
+    endpoint: string,
+    options: fetchOptions<TBody> = {}
+  ): Promise<TResponse> {
+    const { method = "GET", body, headers = {} } = options;
 
-        const defaultHeaders = {
-            "Content-Type": "application/json",
-            ...headers
-        }
+    const defaultHeaders = {
+      "Content-Type": "application/json",
+      ...headers,
+    };
 
-        const res = await fetch(`/api${endpoint}`,
-            {
-                method,
-                headers: defaultHeaders,
-                body: body ? JSON.stringify(body) : undefined
-            }
-        )
-        if (!res.ok) {
-            throw new Error(await res.text())
-        }
-        return res.json()
+    const res = await fetch(`/api${endpoint}`, {
+      method,
+      headers: defaultHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
     }
 
-    async getvideos() {
-    return this.fetch("/video")
-    }
+    return res.json();
+  }
 
-    async createVideo(videoData: videoFormData) {
-        return this.fetch("/video", {
-            method: "POST",
-            body: videoData
-        })
-    }
+  // GET /api/video
+  async getVideos(): Promise<IVideo[]> {
+    return this.fetch<IVideo[]>("/video");
+  }
+
+  // POST /api/video
+  async createVideo(videoData: videoFormData): Promise<IVideo> {
+    return this.fetch<IVideo, videoFormData>("/video", {
+      method: "POST",
+      body: videoData,
+    });
+  }
 }
 
+// Export a singleton instance
 export const apiClient = new ApiClient();

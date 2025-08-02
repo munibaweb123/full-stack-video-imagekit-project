@@ -12,6 +12,7 @@ export async function GET() {
       publicKey: process.env.NEXT_PUBLIC_PUBLIC_KEY,
     });
   } catch (error) {
+     console.error("ImageKit Auth Error:", error); // 👈 Use error to remove warning
     return Response.json(
       {
         error: "Authentication for Imagekit failed",

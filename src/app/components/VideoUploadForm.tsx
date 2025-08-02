@@ -20,19 +20,22 @@ export default function VideoUploadForm() {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+
     setUploading(true);
     setProgress(0);
 
     try {
+      // 🔐 Fetch upload auth parameters from your backend
+      const authRes = await fetch('/api/imagekit-auth');
+      const { authenticationParameters, publicKey } = await authRes.json();
+
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('fileName', selectedFile.name);
-
-      // Replace with your actual ImageKit public/private keys (ideally via backend)
-      formData.append('publicKey', process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!);
-      formData.append('signature', '<your_generated_signature_here>');
-      formData.append('expire', '<signature_expiry_timestamp>');
-      formData.append('token', '<your_generated_token>');
+      formData.append('publicKey', publicKey);
+      formData.append('signature', authenticationParameters.signature);
+      formData.append('expire', authenticationParameters.expire.toString());
+      formData.append('token', authenticationParameters.token);
 
       const response = await axios.post(
         'https://upload.imagekit.io/api/v1/files/upload',
@@ -49,8 +52,14 @@ export default function VideoUploadForm() {
       );
 
       setUploadedURL(response.data.url);
-    } catch (error: any) {
-      console.error('Upload error:', error.response?.data || error.message);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        console.error('Upload error:', error.response?.data || error.message);
+      } else if (error instanceof Error) {
+        console.error('Upload error:', error.message);
+      } else {
+        console.error('Unknown error:', error);
+      }
     } finally {
       setUploading(false);
     }
@@ -59,9 +68,13 @@ export default function VideoUploadForm() {
   return (
     <div className="p-4 max-w-xl mx-auto space-y-4">
       <input type="file" accept="video/*" onChange={handleFileChange} />
-      
+
       {previewURL && (
-        <video src={previewURL} controls className="mt-4 w-full rounded-lg" />
+        <video
+          src={previewURL}
+          controls
+          className="mt-4 w-full rounded-lg border shadow"
+        />
       )}
 
       {uploading && <p>Uploading: {progress}%</p>}
@@ -69,7 +82,7 @@ export default function VideoUploadForm() {
       <button
         onClick={handleUpload}
         disabled={!selectedFile || uploading}
-        className="btn btn-primary"
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
       >
         {uploading ? 'Uploading...' : 'Upload'}
       </button>
@@ -77,7 +90,12 @@ export default function VideoUploadForm() {
       {uploadedURL && (
         <div className="mt-4">
           <p className="text-green-600">Uploaded successfully!</p>
-          <a href={uploadedURL} target="_blank" className="text-blue-500 underline">
+          <a
+            href={uploadedURL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
             View on ImageKit
           </a>
         </div>
